@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <title>
+      How to implement a flag around my feature “Log-in with Google“ and control
+      it through a feature toggle use case in Flagship
+    </title>
+  </head>
+  <body>
+    <div class="container">
+      <div
+        id="loader"
+        class="loader d-flex justify-content-center align-items-center"
+      >
+        <div class="lds-facebook">
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
+      <div class="align-items-center justify-content-center row vh-100">
+        <div class="col-12 col-md-4">
+          <div class="mb-5">
+            <label for="zone">Choose your geographic zone</label>
+            <select name="zone" id="zone">
+              <option value="europe/america">Europe/America</option>
+              <option value="asia">Asia</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <form action="POST" id="login-form">
+            <div class="mb-3">
+              <h3>Sign in</h3>
+              <p class="form-text">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              </p>
+            </div>
+            <div class="input-group mb-3">
+              <input
+                type="email"
+                name="email"
+                class="form-control"
+                placeholder="email"
+              />
+            </div>
+            <div class="input-group mb-3">
+              <input
+                type="password"
+                autocomplete
+                name="password"
+                class="form-control"
+                placeholder="password"
+              />
+            </div>
+            <button class="btn btn-primary" type="submit">login</button>
+            <div class="text-center my-3 d-none" id="login-or">or</div>
+            <div class="d-flex justify-content-center" id="google-login">
+              <div class="google-btn mr-3 d-none" id="google-btn">
+                <div class="google-icon-wrapper">
+                  <img
+                    class="google-icon"
+                    src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
+                    alt="google"
+                  />
+                </div>
+                <p class="btn-text"><strong>Sign in with google</strong></p>
+              </div>
+              <div class="wechat-btn d-none" id="wechat-btn">
+                <img class="wechat-icon" src="WeChat.svg" alt="wechat" />
+                <span class="btn-text"
+                  ><strong>Sign in with wechat</strong></span
+                >
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- step 1 import flagship Sdk bundle -->
+    <script src="./index.browser.js"></script>
+    <script>
+      const selectedZone = document.querySelector("#zone");
+      const loader = document.getElementById("loader");
+
+      const googleLogin = document.getElementById("google-btn");
+      const weChatLogin = document.getElementById("wechat-btn");
+
+      //step 2 initialize Flagship SDK
+      Flagship.start("envId", "apiKey");
+
+      //step 3 create a visitor
+      //when fetch property is unset or true, newVisitor will call synchronizeModifications automatically
+      const visitor = Flagship.newVisitor({
+        hasConsented: true,
+        context: {
+          zone: selectedZone.value,
+        },
+      });
+
+      //step 4 listen visitor to be ready
+      visitor.on("ready", function (error) {
+        if (error) {
+          console.log("error", error);
+        }
+
+        // step 5 get flags
+        visitor
+          .getModifications([
+            {
+              key: "login-with-google",
+              defaultValue: false,
+            },
+            {
+              key: "login-with-wechat",
+              defaultValue: false,
+            },
+            { key: "login-btn-color", defaultValue: "#0d6efd" },
+          ])
+          .then((flags) => {
+            const loginOr = document.getElementById("login-or");
+
+            //Hide or show google login according to flag login-with-google
+            if (flags["login-with-google"]) {
+              googleLogin.classList.remove("d-none");
+            } else {
+              googleLogin.classList.add("d-none");
+            }
+
+            //Hide or show wechat login according to flag login-with-wechat
+            if (flags["login-with-wechat"]) {
+              weChatLogin.classList.remove("d-none");
+            } else {
+              weChatLogin.classList.add("d-none");
+            }
+
+            if (!flags["login-with-wechat"] && !flags["login-with-google"]) {
+              loginOr.classList.add("d-none");
+            } else {
+              loginOr.classList.remove("d-none");
+            }
+
+            //Change login form button color according to the flag `login-btn-color`
+            const loginBtn = document.querySelector("form button");
+            loginBtn.style.backgroundColor = flags["login-btn-color"];
+            loginBtn.style.borderColor = flags["login-btn-color"];
+
+            setTimeout(() => {
+              loader.classList.add("d-none");
+            }, 200);
+          });
+      });
+
+      selectedZone.addEventListener("change", function (e) {
+        loader.classList.remove("d-none");
+        visitor.updateContext({ zone: e.target.value });
+        visitor.synchronizeModifications();
+      });
+
+      const loginForm = document.getElementById("login-form");
+
+      //send hit
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        visitor.sendHit({
+          type: "EVENT",
+          category: "ACTION TRACKING",
+          action: "submit-basic-login",
+        });
+      });
+
+      //send hit
+      googleLogin.addEventListener("click", () => {
+        visitor.sendHit({
+          type: "EVENT",
+          category: "ACTION TRACKING",
+          action: "click-google-login",
+        });
+      });
+
+      //send hit
+      weChatLogin.addEventListener("click", () => {
+        visitor.sendHit({
+          type: "EVENT",
+          category: "ACTION TRACKING",
+          action: "click-wechat-login",
+        });
+      });
+    </script>
+  </body>
+</html>
