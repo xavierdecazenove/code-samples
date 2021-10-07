@@ -119,12 +119,18 @@
             {
               key: "login-with-google",
               defaultValue: false,
+              activate: true, // send activate
             },
             {
               key: "login-with-wechat",
               defaultValue: false,
+              activate: true, // send activate
             },
-            { key: "login-btn-color", defaultValue: "#0d6efd" },
+            {
+              key: "login-btn-color",
+              defaultValue: "#0d6efd",
+              activate: true, // send activate
+            },
           ])
           .then((flags) => {
             const loginOr = document.getElementById("login-or");
